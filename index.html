@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>General Coupled-System Phase Portrait</title>
+<style>
+:root{--ink:#262b34;--muted:#697180;--blue:#2855a5;--pink:#c84f78;--red:#dd3d50;--purple:#7041a5;--panel:#eef3fb;--line:#c8d0dc}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+main{width:min(1320px,calc(100vw - 12px));margin:auto;padding:6px 0}.app{height:min(830px,calc(100vh - 12px));min-height:680px;border:2px solid #8b9198;background:#fff;display:grid;grid-template-columns:330px 1fr;overflow:hidden}
+.panel{background:var(--panel);border-right:2px solid #c5ccd7;padding:15px;overflow:auto}h1{font:700 23px Georgia,serif;margin:0 0 4px}.intro{font-size:12px;color:var(--muted);line-height:1.35;margin-bottom:11px}
+.system{background:#fff;border:1px solid var(--line);padding:10px;display:grid;gap:8px}.eqrow{display:grid;grid-template-columns:35px 1fr;align-items:center;gap:7px;font:italic 18px Georgia,serif}.eqrow input{width:100%;height:34px;border:1px solid #9aa6b6;border-radius:4px;padding:5px 8px;font:15px Consolas,monospace}
+.buttons{display:flex;gap:6px;margin-top:8px}.buttons button,.preset{border:1px solid #99a5b6;border-radius:4px;background:#fff;color:#313844;padding:8px 7px;font-weight:700;cursor:pointer}.buttons button{flex:1}.buttons .primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.message{min-height:17px;font-size:11px;margin:5px 0;color:#b22d42}.presets{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:7px 0 12px}.preset{font-size:11px;padding:7px 4px}
+.field{margin:9px 0}.head{display:flex;justify-content:space-between;font-size:12px;font-weight:700}.value{font:700 14px Georgia,serif;color:var(--blue)}input[type=range]{width:100%;height:24px;accent-color:var(--red);touch-action:none}
+.initial{background:#fff;border:1px solid var(--line);padding:9px;margin-top:9px}.initial strong{font-size:12px}.xy{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-top:6px}.xy input{width:100%;min-width:0;height:32px;border:1px solid #9aa6b6;border-radius:4px;padding:5px}.xy button{border:0;border-radius:4px;background:var(--purple);color:#fff;font-weight:700;padding:0 10px;cursor:pointer}
+.tip{font-size:11px;line-height:1.35;color:var(--muted);margin:8px 0}.stage{min-width:0;min-height:0;display:grid;grid-template-rows:61% 39%}.phase,.series{position:relative;min-height:0;overflow:hidden}.phase{border-bottom:2px solid #c4ccd7}.phase canvas,.series canvas{width:100%;height:100%;display:block;touch-action:none}
+.badge{position:absolute;left:10px;top:9px;background:rgba(255,255,255,.94);border:1px solid var(--line);padding:6px 8px;border-radius:4px;font-size:12px;font-weight:700;color:var(--blue);pointer-events:none}.legend{position:absolute;right:9px;top:7px;background:rgba(255,255,255,.94);border:1px solid var(--line);padding:5px 7px;font-size:11px;line-height:1.5;pointer-events:none}.sw{display:inline-block;width:16px;height:3px;margin-right:4px;vertical-align:middle}
+@media(max-width:790px){main{width:100%;padding:0}.app{height:auto;min-height:100vh;border:0;grid-template-columns:1fr;grid-template-rows:auto 760px}.panel{border-right:0;border-bottom:2px solid #c5ccd7}.stage{grid-template-rows:460px 300px}}
+</style>
+</head>
+<body><main><section class="app">
+<aside class="panel">
+ <h1>Coupled-system explorer</h1>
+ <div class="intro">Enter an autonomous system, then click or tap the phase plane to create solution curves from arbitrary initial states.</div>
+ <div class="system">
+  <div class="eqrow"><span>x' =</span><input id="fx" value="y" spellcheck="false" aria-label="x derivative"></div>
+  <div class="eqrow"><span>y' =</span><input id="fy" value="-(x+y)/3" spellcheck="false" aria-label="y derivative"></div>
+ </div>
+ <div class="buttons"><button class="primary" id="apply">Apply system</button><button id="clear">Clear curves</button><button id="undo">Undo</button></div>
+ <div class="message" id="message"></div>
+ <div class="presets">
+  <button class="preset" data-preset="damped">Damped oscillator</button><button class="preset" data-preset="saddle">Saddle</button>
+  <button class="preset" data-preset="center">Center</button><button class="preset" data-preset="source">Spiral source</button>
+  <button class="preset" data-preset="predator">Predator-prey</button><button class="preset" data-preset="nonlinear">Nonlinear</button>
+ </div>
+ <div class="field"><div class="head"><label for="range">Phase-plane range</label><span class="value" id="rangeV"></span></div><input id="range" type="range" min="2" max="12" step=".5" value="5"></div>
+ <div class="field"><div class="head"><label for="horizon">Time horizon</label><span class="value" id="horizonV"></span></div><input id="horizon" type="range" min="3" max="30" step="1" value="20"></div>
+ <div class="field"><div class="head"><label for="trace">Trace solutions</label><span class="value" id="traceV">0%</span></div><input id="trace" type="range" min="0" max="100" step=".1" value="0"></div>
+ <div class="buttons"><button class="primary" id="play">Play</button><button id="restart">Restart trace</button></div>
+ <div class="initial"><strong>Add an exact initial point</strong><div class="xy"><input id="x0" type="number" step=".1" value="4" aria-label="initial x"><input id="y0" type="number" step=".1" value="1" aria-label="initial y"><button id="add">Add</button></div></div>
+ <div class="tip">Drag an initial point to reposition it. Click a curve to select its time series. Use explicit multiplication, such as <b>2*x</b>.</div>
+</aside>
+<div class="stage">
+ <div class="phase"><canvas id="phase"></canvas><div class="badge" id="badge">x' = y, y' = -(x+y)/3</div></div>
+ <div class="series"><canvas id="series"></canvas><div class="legend"><span class="sw" style="background:#c84f78"></span>x(t)<br><span class="sw" style="background:#2e8e99"></span>y(t)</div></div>
+</div>
+</section></main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id),P=$('phase'),T=$('series'),pc=P.getContext('2d'),tc=T.getContext('2d');
+const colors=['#2855a5','#9a4aa5','#18876f','#d16b27','#b53a61','#397eae','#7b6c24','#4b5fc1'];
+let F=(x,y)=>y,G=(x,y)=>(-x-y)/3,seeds=[],selected=-1,drag=-1,progress=0,playing=false,last=performance.now();
+const presets={damped:['y','-(x+y)/3'],saddle:['x','-y'],center:['y','-x'],source:['x-y','x+y'],predator:['x*(1-y)','y*(x-1)'],nonlinear:['y','x-x^3-0.25*y']};
+function compile(raw){
+ let e=raw.trim().replace(/\^/g,'**').replace(/\bln\b/gi,'log').replace(/\bpi\b/gi,'PI');
+ if(!e||/[;{}\[\]="'`?:]/.test(e))throw Error('Use a mathematical expression only.');
+ const ids=e.match(/[A-Za-z_]\w*/g)||[],allowed=new Set(['x','y','sin','cos','tan','asin','acos','atan','atan2','sinh','cosh','tanh','exp','log','sqrt','abs','pow','min','max','floor','ceil','round','sign','PI','E']);
+ if(ids.some(id=>!allowed.has(id)))throw Error('Unsupported name: '+ids.find(id=>!allowed.has(id)));
+ const names=['sin','cos','tan','asin','acos','atan','atan2','sinh','cosh','tanh','exp','log','sqrt','abs','pow','min','max','floor','ceil','round','sign','PI','E'];
+ const vals=names.map(n=>Math[n]);const fn=Function('x','y',...names,'"use strict";return ('+e+')');
+ return (x,y)=>{const v=fn(x,y,...vals);return Number.isFinite(v)?v:NaN};
+}
+function applySystem(clear=true){
+ try{const f=compile($('fx').value),g=compile($('fy').value);for(const [x,y] of [[0,0],[.7,-.4],[-1.1,.9]]){f(x,y);g(x,y)}F=f;G=g;$('message').textContent='';$('badge').textContent="x' = "+$('fx').value+",   y' = "+$('fy').value;if(clear)seeds=[];rebuildAll()}
+ catch(e){$('message').textContent=e.message}
+}
+function deriv(x,y){const a=F(x,y),b=G(x,y);return Number.isFinite(a)&&Number.isFinite(b)?[a,b]:null}
+function integrate(x0,y0,dir){
+ const H=+$('horizon').value,dt=.025*dir,n=Math.round(H/.025),out=[{t:0,x:x0,y:y0}];let x=x0,y=y0,t=0;
+ for(let i=0;i<n;i++){
+  const k1=deriv(x,y);if(!k1)break;const k2=deriv(x+k1[0]*dt/2,y+k1[1]*dt/2);if(!k2)break;
+  const k3=deriv(x+k2[0]*dt/2,y+k2[1]*dt/2);if(!k3)break;const k4=deriv(x+k3[0]*dt,y+k3[1]*dt);if(!k4)break;
+  x+=dt*(k1[0]+2*k2[0]+2*k3[0]+k4[0])/6;y+=dt*(k1[1]+2*k2[1]+2*k3[1]+k4[1])/6;t+=dt;
+  if(!Number.isFinite(x)||!Number.isFinite(y)||Math.abs(x)>1e5||Math.abs(y)>1e5)break;out.push({t,x,y});
+ }return out;
+}
+function makeSeed(x,y){return{x,y,forward:integrate(x,y,1),color:colors[seeds.length%colors.length]}}
+function addSeed(x,y){if(seeds.length>=12)seeds.shift();seeds.push(makeSeed(x,y));selected=seeds.length-1;resetTrace()}
+function rebuildAll(){seeds=seeds.map(s=>makeSeed(s.x,s.y));selected=Math.min(selected,seeds.length-1);resetTrace()}
+function resetTrace(){progress=0;playing=false;$('play').textContent='Play';$('trace').value=0;$('traceV').textContent='0%'}
+function fit(c,ctx){const b=c.getBoundingClientRect(),d=devicePixelRatio||1,w=Math.max(1,Math.round(b.width*d)),h=Math.max(1,Math.round(b.height*d));if(c.width!==w||c.height!==h){c.width=w;c.height=h}ctx.setTransform(d,0,0,d,0,0);return[b.width,b.height]}
+function mapPhase(w,h){const r=+$('range').value,pad=35,s=Math.min((w-2*pad)/(2*r),(h-2*pad)/(2*r)),ox=w/2,oy=h/2;return{x:v=>ox+v*s,y:v=>oy-v*s,ix:v=>(v-ox)/s,iy:v=>(oy-v)/s,s,r,ox,oy}}
+function axes(ctx,w,h,m){
+ ctx.font='11px Arial';ctx.textAlign='center';for(let i=-Math.floor(m.r);i<=m.r;i++){const x=m.x(i),y=m.y(i);ctx.strokeStyle=i===0?'#454a52':'#e1e4e9';ctx.lineWidth=i===0?2:1;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();if(i&&i%2===0){ctx.fillStyle='#656c78';ctx.fillText(i,x,m.oy+15);ctx.textAlign='right';ctx.fillText(i,m.ox-7,y+4);ctx.textAlign='center'}}
+ ctx.fillStyle='#282d35';ctx.font='italic 17px Georgia';ctx.fillText('x',w-15,m.oy-8);ctx.fillText('y',m.ox+14,18);
+}
+function drawField(ctx,w,h,m){
+ const step=Math.max(34,Math.min(52,w/17));ctx.strokeStyle='#b8bdc5';ctx.fillStyle='#b8bdc5';ctx.lineWidth=1.3;
+ for(let px=step/2;px<w;px+=step)for(let py=step/2;py<h;py+=step){const x=m.ix(px),y=m.iy(py),d=deriv(x,y);if(!d)continue;const mag=Math.hypot(...d);if(mag<1e-8)continue;const ux=d[0]/mag,uy=-d[1]/mag,L=13,x1=px-ux*L/2,y1=py-uy*L/2,x2=px+ux*L/2,y2=py+uy*L/2;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-ux*4+uy*3,y2-uy*4-ux*3);ctx.lineTo(x2-ux*4-uy*3,y2-uy*4+ux*3);ctx.closePath();ctx.fill()}
+}
+function curve(ctx,arr,m,count,color,width){ctx.beginPath();let begun=false;for(let i=0;i<count&&i<arr.length;i++){const p=arr[i],xx=m.x(p.x),yy=m.y(p.y);if(!Number.isFinite(xx)||Math.abs(xx)>2e4||Math.abs(yy)>2e4){begun=false;continue}if(begun)ctx.lineTo(xx,yy);else{ctx.moveTo(xx,yy);begun=true}}ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke()}
+function drawPhase(){
+ const [w,h]=fit(P,pc),m=mapPhase(w,h);pc.clearRect(0,0,w,h);axes(pc,w,h,m);drawField(pc,w,h,m);
+ seeds.forEach((s,i)=>{const nF=Math.max(1,Math.floor(s.forward.length*progress));curve(pc,s.forward,m,nF,s.color,i===selected?3:2);
+  pc.fillStyle=i===selected?'#7041a5':s.color;pc.strokeStyle='#20242b';pc.lineWidth=1.5;pc.beginPath();pc.arc(m.x(s.x),m.y(s.y),i===selected?7:5,0,Math.PI*2);pc.fill();pc.stroke();
+  if(i===selected&&nF>1){const p=s.forward[Math.min(nF-1,s.forward.length-1)];pc.fillStyle='#dd3d50';pc.beginPath();pc.arc(m.x(p.x),m.y(p.y),6,0,Math.PI*2);pc.fill()}
+ });
+}
+function drawSeries(){
+ const [w,h]=fit(T,tc),L=52,R=18,Top=24,B=34,W=w-L-R,H=h-Top-B,horizon=+$('horizon').value,s=selected>=0?seeds[selected]:null;
+ tc.clearRect(0,0,w,h);let yMax=1;if(s)yMax=Math.max(1,...s.forward.map(p=>Math.max(Math.abs(p.x),Math.abs(p.y))))*1.1;
+ for(let i=0;i<=5;i++){const x=L+W*i/5;tc.strokeStyle='#e1e4e9';tc.lineWidth=1;tc.beginPath();tc.moveTo(x,Top);tc.lineTo(x,Top+H);tc.stroke();tc.fillStyle='#656d79';tc.font='11px Arial';tc.textAlign='center';tc.fillText((horizon*i/5).toFixed(0),x,Top+H+17)}
+ for(const v of [-yMax,0,yMax]){const y=Top+H*(1-v/yMax)/2;tc.strokeStyle=v===0?'#4b5058':'#e1e4e9';tc.lineWidth=v===0?2:1;tc.beginPath();tc.moveTo(L,y);tc.lineTo(L+W,y);tc.stroke();tc.fillStyle='#656d79';tc.textAlign='right';tc.fillText(v.toFixed(1),L-7,y+4)}
+ if(s){const count=Math.max(1,Math.floor(s.forward.length*progress));for(const [key,color] of [['x','#c84f78'],['y','#2e8e99']]){tc.beginPath();for(let i=0;i<count;i++){const p=s.forward[i],xx=L+W*p.t/horizon,yy=Top+H*(1-p[key]/yMax)/2;i?tc.lineTo(xx,yy):tc.moveTo(xx,yy)}tc.strokeStyle=color;tc.lineWidth=2.5;tc.stroke()}const p=s.forward[Math.min(count-1,s.forward.length-1)],xx=L+W*p.t/horizon,yy=Top+H*(1-p.x/yMax)/2;tc.fillStyle='#dd3d50';tc.beginPath();tc.arc(xx,yy,5,0,Math.PI*2);tc.fill()}
+ else{tc.fillStyle='#7b8290';tc.font='15px Arial';tc.textAlign='center';tc.fillText('Add an initial point to draw x(t) and y(t)',L+W/2,Top+H/2)}
+ tc.fillStyle='#303640';tc.font='italic 14px Georgia';tc.textAlign='center';tc.fillText('time t',L+W/2,h-7);
+}
+function pointerXY(e){const b=P.getBoundingClientRect();return[e.clientX-b.left,e.clientY-b.top]}
+function curveHit(px,py,m){
+ let best=-1,bestD=11;
+ seeds.forEach((s,i)=>{const arr=s.forward;for(let j=0,n=Math.max(1,Math.floor(arr.length*progress));j<n;j+=8){const p=arr[j],d=Math.hypot(m.x(p.x)-px,m.y(p.y)-py);if(d<bestD){bestD=d;best=i}}});
+ return best;
+}
+P.addEventListener('pointerdown',e=>{
+ P.setPointerCapture(e.pointerId);const [px,py]=pointerXY(e),m=mapPhase(P.clientWidth,P.clientHeight);
+ drag=seeds.findIndex(s=>Math.hypot(m.x(s.x)-px,m.y(s.y)-py)<16);
+ if(drag>=0){selected=drag;return}
+ const hit=curveHit(px,py,m);if(hit>=0){selected=hit;return}
+ addSeed(m.ix(px),m.iy(py));
+});
+P.addEventListener('pointermove',e=>{if(drag<0)return;const [px,py]=pointerXY(e),m=mapPhase(P.clientWidth,P.clientHeight),x=Math.max(-m.r,Math.min(m.r,m.ix(px))),y=Math.max(-m.r,Math.min(m.r,m.iy(py)));seeds[drag]=makeSeed(x,y);selected=drag;resetTrace()});
+P.addEventListener('pointerup',()=>drag=-1);P.addEventListener('pointercancel',()=>drag=-1);
+$('apply').addEventListener('click',()=>applySystem(true));$('clear').addEventListener('click',()=>{seeds=[];selected=-1;resetTrace()});$('undo').addEventListener('click',()=>{seeds.pop();selected=seeds.length-1;resetTrace()});
+$('add').addEventListener('click',()=>{const x=+$('x0').value,y=+$('y0').value;if(Number.isFinite(x)&&Number.isFinite(y))addSeed(x,y)});
+$('range').addEventListener('input',()=>{$('rangeV').textContent='±'+$('range').value});$('horizon').addEventListener('input',()=>{$('horizonV').textContent=$('horizon').value+' s';rebuildAll()});
+$('trace').addEventListener('input',()=>{playing=false;$('play').textContent='Play';progress=+$('trace').value/100;$('traceV').textContent=Math.round(progress*100)+'%'});
+$('play').addEventListener('click',()=>{playing=!playing;$('play').textContent=playing?'Pause':'Play';last=performance.now()});$('restart').addEventListener('click',resetTrace);
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{[$('fx').value,$('fy').value]=presets[b.dataset.preset];applySystem(true)}));
+function frame(now){if(playing){progress+=(now-last)/9000;if(progress>=1){progress=1;playing=false;$('play').textContent='Play'}$('trace').value=progress*100;$('traceV').textContent=Math.round(progress*100)+'%'}last=now;drawPhase();drawSeries();requestAnimationFrame(frame)}
+$('rangeV').textContent='±'+$('range').value;$('horizonV').textContent=$('horizon').value+' s';addSeed(4,1);requestAnimationFrame(frame);
+})();
+</script></body></html>
